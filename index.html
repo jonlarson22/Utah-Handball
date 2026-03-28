@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>UHA Admin</title>
+    <title>Utah Handball</title>
 
 	<link rel="manifest" href="manifest.json">
 
@@ -10,7 +10,7 @@
 
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="UHA Admin">
+<meta name="apple-mobile-web-app-title" content="Utah Handball">
 <link rel="apple-touch-icon" href="icon.png">
 	
 	<style>
@@ -156,70 +156,6 @@
     <p style="margin: 5px 0 0; color: #888; font-size: 0.9rem; text-transform: uppercase;">Official ELO Rankings & Match History</p>
 </div>
 
-
-<div id="adminQueue" style="margin-bottom: 25px;"></div>
-	
-    <h2>Leaderboard</h2>
-<input type="text" id="playerSearch" class="search-input" placeholder="🔍 Search players..." onkeyup="filterTable()">
-<div class="tab-bar">
-    <div id="vS" class="tab active-tab" onclick="setView('singles')">SINGLES</div>
-    <div id="vD" class="tab" onclick="setView('doubles')">DOUBLES</div>
-</div>
-
-<table id="leaderboardTable" style="width: 100%; border-collapse: collapse;">
-    <thead>
-        <tr style="background: #222;">
-            <th style="width: 15%; text-align: center; padding: 10px;">Rank</th>
-            <th style="width: 45%; text-align: left; padding: 10px;">Name</th>
-            <th style="width: 20%; text-align: center; padding: 10px;">Current</th>
-            <th style="width: 20%; text-align: center; padding: 10px;">Peak</th> 
-        </tr>
-    </thead>
-    <tbody id="leaderboardBody"></tbody>
-</table>
-
-<div id="paginationControls" style="display: flex; justify-content: center; align-items: center; margin: 20px 0; gap: 10px;"></div>
-
-    <h2>Match History</h2>
-    <div class="history-box">
-        <table id="historyTable">
-            <thead>
-                <tr>
-                    <th style="width:10%; text-align: center;">Match Type</th>
-                    <th style="width:27.5%; text-align: center;">Players</th>
-                    <th style="width:20%; text-align: center;">Score</th>
-                    <th style="width:32.5%; text-align: center;">ELO Shifts</th>
-                    <th style="width:10%; text-align: center;">Action</th>
-                </tr>
-            </thead>
-            <tbody></tbody>
-        </table>
-    </div>
-
-    <h2>Head-to-Head</h2>
-    <div class="h2h-box">
-        <div style="display:flex; gap:10px; margin-bottom:15px;">
-            <select id="h2hA" onchange="runH2H()"></select>
-            <div style="align-self:center; font-weight:bold;">VS</div>
-            <select id="h2hB" onchange="runH2H()"></select>
-        </div>
-
-        <div class="tab-bar" style="margin-bottom: 15px; background: #111;">
-            <div id="h2hTS" class="tab active-tab" onclick="setH2HMode('singles')">SINGLES</div>
-            <div id="h2hTD" class="tab" onclick="setH2HMode('doubles')">DOUBLES</div>
-        </div>
-
-        <div id="h2hResults" style="display:none;">
-            <div class="h2h-grid">
-                <div><div id="h2hNameA">--</div><div id="h2hWinsA" class="h2h-stat">0</div><div class="label">WINS</div></div>
-                <div style="font-size: 0.9rem; font-weight:bold;">Total Games: <span id="h2hTotal" style="color:#3498db">0</span></div>
-                <div><div id="h2hNameB">--</div><div id="h2hWinsB" class="h2h-stat">0</div><div class="label">WINS</div></div>
-            </div>
-            <div class="label" style="margin-bottom:8px;">Recent Match Scores (Last 5)</div>
-            <div id="h2hRecent" class="h2h-recent-list"></div>
-        </div>
-    </div>
-	
     <h2>Result Entry</h2>
     <div class="tab-bar">
         <div id="tS" class="tab active-tab" onclick="setMode('singles')">SINGLES</div>
@@ -248,9 +184,71 @@
     </div>
 </div>
     <button class="match-btn" onclick="processMatch()">SUBMIT SCORE</button>
+	
+    <h2>Leaderboard</h2>
+<input type="text" id="playerSearch" class="search-input" placeholder="🔍 Search players..." onkeyup="filterTable()">
+<div class="tab-bar">
+    <div id="vS" class="tab active-tab" onclick="setView('singles')">SINGLES</div>
+    <div id="vD" class="tab" onclick="setView('doubles')">DOUBLES</div>
+</div>
+
+<table id="leaderboardTable" style="width: 100%; border-collapse: collapse;">
+    <thead>
+        <tr style="background: #222;">
+            <th style="width: 15%; text-align: center; padding: 10px;">Rank</th>
+            <th style="width: 45%; text-align: left; padding: 10px;">Name</th>
+            <th style="width: 20%; text-align: center; padding: 10px;">Current</th>
+            <th style="width: 20%; text-align: center; padding: 10px;">Peak</th> 
+        </tr>
+    </thead>
+    <tbody id="leaderboardBody"></tbody>
+</table>
+
+<div id="paginationControls" style="display: flex; justify-content: center; align-items: center; margin: 20px 0; gap: 10px;"></div>
+
+	<h2>Head-to-Head</h2>
+    <div class="h2h-box">
+        <div style="display:flex; gap:10px; margin-bottom:15px;">
+            <select id="h2hA" onchange="runH2H()"></select>
+            <div style="align-self:center; font-weight:bold;">VS</div>
+            <select id="h2hB" onchange="runH2H()"></select>
+        </div>
+
+        <div class="tab-bar" style="margin-bottom: 15px; background: #111;">
+            <div id="h2hTS" class="tab active-tab" onclick="setH2HMode('singles')">SINGLES</div>
+            <div id="h2hTD" class="tab" onclick="setH2HMode('doubles')">DOUBLES</div>
+        </div>
+
+        <div id="h2hResults" style="display:none;">
+            <div class="h2h-grid">
+                <div><div id="h2hNameA">--</div><div id="h2hWinsA" class="h2h-stat">0</div><div class="label">WINS</div></div>
+                <div style="font-size: 0.9rem; font-weight:bold;">Total Games: <span id="h2hTotal" style="color:#3498db">0</span></div>
+                <div><div id="h2hNameB">--</div><div id="h2hWinsB" class="h2h-stat">0</div><div class="label">WINS</div></div>
+            </div>
+            <div class="label" style="margin-bottom:8px;">Recent Match Scores (Last 5)</div>
+            <div id="h2hRecent" class="h2h-recent-list"></div>
+        </div>
+    </div>
+
+<div id="adminQueue" style="margin-bottom: 25px;"></div>
+
+    <h2>Match History</h2>
+    <div class="history-box">
+        <table id="historyTable">
+            <thead>
+                <tr>
+                    <th style="width:10%; text-align: center;">Match Type</th>
+                    <th style="width:27.5%; text-align: center;">Players</th>
+                    <th style="width:20%; text-align: center;">Score</th>
+                    <th style="width:32.5%; text-align: center;">ELO Shifts</th>
+                    <th style="width:10%; text-align: center;">Action</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+    </div>
 
 <h2>Admin Panel</h2>
-
 <div class="mgmt-box">
     <div style="display: flex; gap: 20px; margin-bottom: 15px;">
         <div style="flex: 1;">
