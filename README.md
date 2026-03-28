@@ -1,1 +1,1 @@
-# Utah-Handball
+# uha-rankings-admin
