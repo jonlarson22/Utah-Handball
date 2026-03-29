@@ -148,51 +148,62 @@ function loadEditData() {
     const l1ID = document.getElementById('l1').value;
     const l2ID = document.getElementById('l2').value;
     
-    const activeMode = (typeof mode !== 'undefined') ? mode : 'singles';
-
+    const activeMode = mode || 'singles';
     let games = [];
-    let tW = 0, tL = 0;
-    let setsW = 0, setsL = 0;
 
     for(let i=1; i<=3; i++) { 
-        const winInput = document.getElementById(`g${i}_w`);
-        const loseInput = document.getElementById(`g${i}_l`);
-        
-        if (winInput && loseInput) {
-            let sW = parseInt(winInput.value);
-            let sL = parseInt(loseInput.value);
-            
-            if(!isNaN(sW) && !isNaN(sL)) {
-                games.push({w: sW, l: sL});
-                tW += sW;
-                tL += sL;
-                if(sW > sL) setsW++; else setsL++;
-            }
+        const wVal = parseInt(document.getElementById(`g${i}_w`).value);
+        const lVal = parseInt(document.getElementById(`g${i}_l`).value);
+        if(!isNaN(wVal) && !isNaN(lVal)) {
+            games.push({w: wVal, l: lVal});
         }
     }
     
     if(w1ID === "0" || l1ID === "0" || games.length === 0) {
-        return alert("Please select players and enter at least one game score.");
+        return alert("Please select players and enter scores.");
     }
 
-    const winners = [w1ID, w2ID].filter(id => id !== "0" && id !== "" && id !== null);
-    const losers = [l1ID, l2ID].filter(id => id !== "0" && id !== "" && id !== null);
-    
+    const winners = [w1ID, w2ID].filter(id => id !== "0" && id !== "");
+    const losers = [l1ID, l2ID].filter(id => id !== "0" && id !== "");
+
+    if (isAdmin) {
+        calculateAndAddMatch(activeMode, winners, losers, games);
+        alert("Match recorded and rankings updated!");
+    } else {
+        pending.push({
+            id: Date.now(),
+            mode: activeMode,
+            winners,
+            losers,
+            games,
+            submittedAt: new Date().toISOString()
+        });
+        alert("Match submitted for review! An admin will approve it shortly.");
+    }
+
+    ['g1_w','g2_w','g3_w','g1_l','g2_l','g3_l'].forEach(id => document.getElementById(id).value = '');
+    save(); 
+}
+
+function calculateAndAddMatch(activeMode, winners, losers, games) {
     const winObjs = players.filter(p => winners.includes(p.id.toString()));
     const lossObjs = players.filter(p => losers.includes(p.id.toString()));
-    
-    let oldPeaks = {};
-    const peakKey = activeMode === 'singles' ? 'peakS' : 'peakD';
-    [...winObjs, ...lossObjs].forEach(p => { 
-        oldPeaks[p.id] = p[peakKey] || 1000; 
+
+    let setsW = 0, setsL = 0, tW = 0, tL = 0;
+    games.forEach(g => {
+        tW += g.w; tL += g.l;
+        if(g.w > g.l) setsW++; else setsL++;
     });
 
     const avgW = winObjs.reduce((a, b) => a + (b[activeMode] || 1000), 0) / winObjs.length;
     const avgL = lossObjs.reduce((a, b) => a + (b[activeMode] || 1000), 0) / lossObjs.length;
-    
     const baseGain = 15 * (Math.pow((tW - tL + 24), 0.7) / (7.5 + (0.01 * (avgW - avgL))));
     
     let impactMap = {}; 
+    let peakKey = activeMode === 'singles' ? 'peakS' : 'peakD';
+    let oldPeaks = {};
+
+    [...winObjs, ...lossObjs].forEach(p => { oldPeaks[p.id] = p[peakKey] || 1000; });
 
     winObjs.forEach(p => {
         let ratio = activeMode === 'doubles' ? (p[activeMode] / (avgW * winObjs.length)) * 2 : 1;
@@ -212,19 +223,11 @@ function loadEditData() {
     history.unshift({ 
         id: Date.now(), 
         mode: activeMode, 
-        winners, 
-        losers,  
+        winners, losers,  
         score: `${setsW}-${setsL}`, 
         detailedGames: games,      
         impacts: impactMap,
         oldPeaks: oldPeaks
-    });
-
-    save();
-    
-    ['g1_w','g2_w','g3_w','g1_l','g2_l','g3_l'].forEach(id => {
-        const el = document.getElementById(id);
-        if(el) el.value = '';
     });
 }
 
@@ -495,6 +498,7 @@ function recalculateSingleMatch(m) {
 async function save() {
     try {
         const dataString = JSON.stringify({ players, history, pending });
+
         const sizeInBytes = new Blob([dataString]).size;
         const sizeInKB = (sizeInBytes / 1024).toFixed(2);
         const percentFull = Math.min((sizeInKB / 100) * 100, 100);
@@ -511,12 +515,6 @@ async function save() {
         localStorage.setItem('hbFullH', JSON.stringify(history));
         localStorage.setItem('hbFullPending', JSON.stringify(pending));
 
-        if (!isAdmin) {
-            render();
-            runH2H();
-            return;
-        }
-
         const response = await fetch(`https://api.jsonbin.io/v3/b/${BIN_ID}`, {
             method: 'PUT',
             headers: {
@@ -529,18 +527,24 @@ async function save() {
         if (response.ok) {
             const syncStatus = document.getElementById('syncStatus');
             if (syncStatus) {
-                const now = new Date().toLocaleString();
-                syncStatus.innerText = "Data Updated: " + now;
+                const now = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                syncStatus.innerText = "Cloud Synced: " + now;
                 syncStatus.style.color = "#2ecc71";
             }
         }
     } catch (err) {
         console.error("Save Error:", err);
+        const syncStatus = document.getElementById('syncStatus');
+        if (syncStatus) {
+            syncStatus.innerText = "Sync Failed (Offline?)";
+            syncStatus.style.color = "#e74c3c";
+        }
     }
 
     render();
     runH2H();
 }
+
     function filterTable() {
     console.log("Filtering table...");
 
