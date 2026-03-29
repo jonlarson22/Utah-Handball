@@ -727,7 +727,10 @@ function render() {
                     ${detailedScore}
                 </td>
                 <td style="font-size:10px">${shiftHTML}</td>
-                <td><button class="undo-btn" onclick="undoMatch(${m.id})">Delete</button></td>
+                
+                <td class="admin-only">
+                    <button class="undo-btn" onclick="undoMatch(${m.id})">Delete</button>
+                </td>
             </tr>`;
         }).join('');
     }
