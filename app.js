@@ -23,8 +23,6 @@ function checkAdmin() {
 const BIN_ID = '69c6d96bb7ec241ddcae3c8a';
 const API_KEY = '$2a$10$nP4ap7u9UTAFUbU6KOjfz.AaVfk2VTJk5l.uMezoaRZng.WAz6Irq';
 
-const IS_ADMIN = true;
-
 let players = [];
 let history = [];
 let pending = [];	
@@ -513,7 +511,7 @@ async function save() {
         localStorage.setItem('hbFullH', JSON.stringify(history));
         localStorage.setItem('hbFullPending', JSON.stringify(pending));
 
-        if (isAdmin) {
+        if (!isAdmin) {
             render();
             runH2H();
             return;
