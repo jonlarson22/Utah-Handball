@@ -30,7 +30,7 @@ function checkAdmin() {
 }
 
 const firebaseConfig = {
-  apiKey: "AIzaSyAXu7iF6g7Ye10YtjDzFtIsCHTDiOEVs_Y",
+  apiKey: "AIzaSyCCV_WHA1Q7WKawfG68Y9z40xINVg5zbmw",
   authDomain: "utah-handball.firebaseapp.com",
   databaseURL: "https://utah-handball-default-rtdb.firebaseio.com",
   projectId: "utah-handball",
