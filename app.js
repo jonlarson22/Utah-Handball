@@ -20,8 +20,18 @@ function checkAdmin() {
     }
 }
 
-const BIN_ID = '69c6d96bb7ec241ddcae3c8a';
-const API_KEY = '$2a$10$nP4ap7u9UTAFUbU6KOjfz.AaVfk2VTJk5l.uMezoaRZng.WAz6Irq';
+const firebaseConfig = {
+  apiKey: "AIzaSyAXu7iF6g7Ye10YtjDzFtIsCHTDiOEVs_Y",
+  authDomain: "utah-handball.firebaseapp.com",
+  databaseURL: "https://utah-handball-default-rtdb.firebaseio.com",
+  projectId: "utah-handball",
+  storageBucket: "utah-handball.firebasestorage.app",
+  messagingSenderId: "4109545863",
+  appId: "1:4109545863:web:6a6de7f532be0bc20f2322"
+};
+
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
 
 let players = [];
 let history = [];
@@ -32,37 +42,32 @@ let h2hMode = 'singles';
 let currentPage = 1;
 const rowsPerPage = 20;
 
-
-async function loadFromCloud() {
-    try {
-        const res = await fetch(`https://api.jsonbin.io/v3/b/${BIN_ID}/latest`, {
-            headers: { 'X-Master-Key': API_KEY }
-        });
-        const responseData = await res.json();
-
-        if (responseData.record) {
-            players = responseData.record.players || [];
-            history = responseData.record.history || [];
-            pending = responseData.record.pending || [];
-
-            render(); 
-            renderQueue();
-
-            const syncStatus = document.getElementById('syncStatus');
-            if (syncStatus) {
-                syncStatus.innerText = "Data Updated: " + new Date(responseData.metadata.createdAt).toLocaleString();
-                syncStatus.style.color = "#2ecc71";
-            }
+db.ref('/').on('value', (snapshot) => {
+    const data = snapshot.val();
+    if (data) {
+        players = data.players || [];
+        history = data.history || [];
+        pending = data.pending || [];
+        
+        render(); 
+        if (isAdmin) renderQueue();
+        
+        const syncStatus = document.getElementById('syncStatus');
+        if (syncStatus) {
+            syncStatus.innerText = "Realtime Connected ✅";
+            syncStatus.style.color = "#2ecc71";
         }
-    } catch (err) {
-        console.error("Cloud Load Failed:", err);
-        players = JSON.parse(localStorage.getItem('hbFullP')) || [];
-        history = JSON.parse(localStorage.getItem('hbFullH')) || [];
-        pending = JSON.parse(localStorage.getItem('hbFullPending')) || [];
+    } else {
         render();
     }
-}
-loadFromCloud();
+}, (error) => {
+    console.error("Firebase Load Failed:", error);
+    const syncStatus = document.getElementById('syncStatus');
+    if (syncStatus) {
+        syncStatus.innerText = "Connection Failed";
+        syncStatus.style.color = "#e74c3c";
+    }
+});
 
     function setMode(m) { mode = m; 
         document.getElementById('tS').classList.toggle('active-tab', m === 'singles');
@@ -507,51 +512,30 @@ function recalculateSingleMatch(m) {
     m.impacts = newImpacts;
 }
 
-async function save() {
-    try {
-        const dataString = JSON.stringify({ players, history, pending });
+	function save() {
+    localStorage.setItem('hbFullP', JSON.stringify(players));
+    localStorage.setItem('hbFullH', JSON.stringify(history));
+    localStorage.setItem('hbFullPending', JSON.stringify(pending));
 
-        const sizeInBytes = new Blob([dataString]).size;
-        const sizeInKB = (sizeInBytes / 1024).toFixed(2);
-        const percentFull = Math.min((sizeInKB / 100) * 100, 100);
-
-        const sizeEl = document.getElementById('dbSize');
-        const barEl = document.getElementById('sizeBar');
-        if (sizeEl) sizeEl.innerText = sizeInKB;
-        if (barEl) {
-            barEl.style.width = percentFull + "%";
-            barEl.style.background = percentFull > 85 ? "#e74c3c" : "#3498db";
+    db.ref('/').set({
+        players: players,
+        history: history,
+        pending: pending
+    }).then(() => {
+        const syncStatus = document.getElementById('syncStatus');
+        if (syncStatus) {
+            const now = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            syncStatus.innerText = "Cloud Synced: " + now;
+            syncStatus.style.color = "#2ecc71";
         }
-
-        localStorage.setItem('hbFullP', JSON.stringify(players));
-        localStorage.setItem('hbFullH', JSON.stringify(history));
-        localStorage.setItem('hbFullPending', JSON.stringify(pending));
-
-        const response = await fetch(`https://api.jsonbin.io/v3/b/${BIN_ID}`, {
-            method: 'PUT',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-Master-Key': API_KEY
-            },
-            body: dataString
-        });
-
-        if (response.ok) {
-            const syncStatus = document.getElementById('syncStatus');
-            if (syncStatus) {
-                const now = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-                syncStatus.innerText = "Cloud Synced: " + now;
-                syncStatus.style.color = "#2ecc71";
-            }
-        }
-    } catch (err) {
+    }).catch((err) => {
         console.error("Save Error:", err);
         const syncStatus = document.getElementById('syncStatus');
         if (syncStatus) {
             syncStatus.innerText = "Sync Failed (Offline?)";
             syncStatus.style.color = "#e74c3c";
         }
-    }
+    });
 
     render();
     runH2H();
