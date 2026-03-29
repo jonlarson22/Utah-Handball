@@ -280,8 +280,8 @@ function approveMatch(index) {
         if(g.w > g.l) setsW++; else setsL++;
     });
 
-    const winObjs = players.filter(p => winners.includes(p.id.toString()) || winners.includes(p.id));
-    const lossObjs = players.filter(p => losers.includes(p.id.toString()) || losers.includes(p.id));
+	const winObjs = players.filter(p => winners.some(id => id == p.id));
+	const lossObjs = players.filter(p => losers.some(id => id == p.id));
 
     const peakKey = activeMode === 'singles' ? 'peakS' : 'peakD';
     let oldPeaks = {};
@@ -326,29 +326,41 @@ function approveMatch(index) {
 
 function reviewSub(index) {
     const m = pending[index];
-    
+    if (!m) return;
+
     setMode(m.mode);
 
-    document.getElementById('w1').value = m.winners[0];
-    document.getElementById('l1').value = m.losers[0];
-    if (m.mode === 'doubles' && m.winners[1]) {
-        document.getElementById('w2').value = m.winners[1];
-        document.getElementById('l2').value = m.losers[1];
+    ['g1_w','g1_l','g2_w','g2_l','g3_w','g3_l'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.value = "";
+    });
+
+    document.getElementById('w1').value = m.winners[0] || "0";
+    document.getElementById('l1').value = m.losers[0] || "0";
+
+    if (m.mode === 'doubles') {
+        document.getElementById('w2').value = m.winners[1] || "0";
+        document.getElementById('l2').value = m.losers[1] || "0";
     }
 
-    ['g1_w','g1_l','g2_w','g2_l','g3_w','g3_l'].forEach(id => document.getElementById(id).value = "");
-
-    m.games.forEach((g, i) => {
-        const num = i + 1;
-        document.getElementById(`g${num}_w`).value = g.w;
-        document.getElementById(`g${num}_l`).value = g.l;
-    });
+    if (m.games && Array.isArray(m.games)) {
+        m.games.forEach((g, i) => {
+            const num = i + 1;
+            const wInput = document.getElementById(`g${num}_w`);
+            const lInput = document.getElementById(`g${num}_l`);
+            if (wInput) wInput.value = g.w;
+            if (lInput) lInput.value = g.l;
+        });
+    }
 
     pending.splice(index, 1);
     save();
-    renderQueue();
 
-    window.scrollTo({ top: document.querySelector('.match-card').offsetTop - 100, behavior: 'smooth' });
+    window.scrollTo({ 
+        top: document.querySelector('.match-card').offsetTop - 100, 
+        behavior: 'smooth' 
+    });
+    
     alert("Match loaded into the form. Review the scores and click 'SUBMIT SCORE' to finalize.");
 }
 
@@ -618,16 +630,12 @@ function changeStatus(hide) {
 }
 
 function loadPlayer() {
-    // 1. Get the ID of the player selected in the 'editList' dropdown
     const selectedID = document.getElementById('editList').value;
-    
-    // 2. Find that specific player in your 'players' array
+
     const p = players.find(x => x.id == selectedID);
-    
-    // 3. If a player was found, fill the boxes. If not (like "Select Player"), clear them.
+
     if(p) {
         document.getElementById('editN').value = p.name;
-        // Using || 0 ensures if they don't have a rating yet, it shows 0 instead of blank
         document.getElementById('editS').value = p.singles || 1000;
         document.getElementById('editD').value = p.doubles || 1000;
     } else {
@@ -741,5 +749,5 @@ function render() {
     
     document.getElementById('statP').innerText = players.length;
     document.getElementById('statM').innerText = history.length;
-	renderQueue();
+	if (isAdmin) renderQueue();
 }
