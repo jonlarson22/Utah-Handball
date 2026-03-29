@@ -2,11 +2,14 @@ function adminLogin(email, password) {
     firebase.auth().signInWithEmailAndPassword(email, password)
       .then((userCredential) => {
         isAdmin = true;
+        // This is the line that makes the admin buttons actually appear:
+        document.body.classList.add('admin-mode'); 
         alert("Admin Verified!");
         render();
       })
       .catch((error) => {
-        alert("Access Denied.");
+        console.error("Login Error:", error.message);
+        alert("Access Denied: " + error.message);
       });
 }
 let isAdmin = false;
