@@ -1,17 +1,28 @@
 const ADMIN_PASSWORD = "killshot"; 
+let isAdmin = false;
 
-(function() {
-    const entry = prompt("Utah Handball Association - Admin Access Required:");
-    
-    if (entry !== ADMIN_PASSWORD) {
-        alert("Access Denied.");
-        window.location.href = "https://jonlarson22.github.io/uha-rankings/"; 
+function checkAdmin() {
+    if (isAdmin) {
+        isAdmin = false;
+        document.body.classList.remove('admin-mode');
+        alert("Admin mode disabled. Back to Public View.");
         return;
     }
-})();
-	
+
+    const entry = prompt("UHA Admin Access Required:");
+    
+    if (entry === ADMIN_PASSWORD) {
+        isAdmin = true;
+        document.body.classList.add('admin-mode');
+        alert("Admin mode enabled!");
+    } else if (entry !== null) {
+        alert("Incorrect password.");
+    }
+}
+
 const BIN_ID = '69c6d96bb7ec241ddcae3c8a';
 const API_KEY = '$2a$10$nP4ap7u9UTAFUbU6KOjfz.AaVfk2VTJk5l.uMezoaRZng.WAz6Irq';
+
 const IS_ADMIN = true;
 
 let players = [];
@@ -502,7 +513,7 @@ async function save() {
         localStorage.setItem('hbFullH', JSON.stringify(history));
         localStorage.setItem('hbFullPending', JSON.stringify(pending));
 
-        if (!IS_ADMIN) {
+        if (isAdmin) {
             render();
             runH2H();
             return;
