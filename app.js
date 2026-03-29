@@ -6,6 +6,8 @@ function checkAdmin() {
         isAdmin = false;
         document.body.classList.remove('admin-mode');
         alert("Admin mode disabled. Back to Public View.");
+        const queueEl = document.getElementById('adminQueue');
+        if (queueEl) queueEl.innerHTML = "";
         return;
     }
 
@@ -15,6 +17,7 @@ function checkAdmin() {
         isAdmin = true;
         document.body.classList.add('admin-mode');
         alert("Admin mode enabled!");
+        renderQueue(); 
     } else if (entry !== null) {
         alert("Incorrect password.");
     }
@@ -69,20 +72,18 @@ db.ref('/').on('value', (snapshot) => {
     }
 });
 
-    function setMode(m) { mode = m; 
-        document.getElementById('tS').classList.toggle('active-tab', m === 'singles');
-        document.getElementById('tD').classList.toggle('active-tab', m === 'doubles');
-        document.querySelectorAll('.d-only').forEach(e => e.classList.toggle('hidden', m === 'singles'));
+    function setMode(m) { 
+    mode = m; 
+    document.getElementById('tS').classList.toggle('active-tab', m === 'singles');
+    document.getElementById('tD').classList.toggle('active-tab', m === 'doubles');
+    document.querySelectorAll('.d-only').forEach(e => e.classList.toggle('hidden', m === 'singles'));
+    
+    if (m === 'singles') {
+        const w2 = document.getElementById('w2');
+        const l2 = document.getElementById('l2');
+        if (w2) w2.value = "0";
+        if (l2) l2.value = "0";
     }
-
-    function setView(v) { 
-    currentView = v;
-    currentPage = 1;
-    
-    filterTable(); 
-    
-    document.getElementById('vS').classList.toggle('active-tab', v === 'singles');
-    document.getElementById('vD').classList.toggle('active-tab', v === 'doubles');
 }
 
 function setH2HMode(m) {
@@ -168,8 +169,11 @@ function loadEditData() {
         return alert("Please select players and enter scores.");
     }
 
-    const winners = [w1ID, w2ID].filter(id => id !== "0" && id !== "");
-    const losers = [l1ID, l2ID].filter(id => id !== "0" && id !== "");
+    let rawWinners = activeMode === 'singles' ? [w1ID] : [w1ID, w2ID];
+    let rawLosers = activeMode === 'singles' ? [l1ID] : [l1ID, l2ID];
+
+    const winners = rawWinners.filter(id => id !== "0" && id !== "");
+    const losers = rawLosers.filter(id => id !== "0" && id !== "");
 
     if (isAdmin) {
         calculateAndAddMatch(activeMode, winners, losers, games);
