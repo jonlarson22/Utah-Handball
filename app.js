@@ -1,25 +1,31 @@
-const ADMIN_PASSWORD = "killshot"; 
+function adminLogin(email, password) {
+    firebase.auth().signInWithEmailAndPassword(email, password)
+      .then((userCredential) => {
+        isAdmin = true;
+        alert("Admin Verified!");
+        render();
+      })
+      .catch((error) => {
+        alert("Access Denied.");
+      });
+}
 let isAdmin = false;
 
 function checkAdmin() {
     if (isAdmin) {
+        firebase.auth().signOut();
         isAdmin = false;
         document.body.classList.remove('admin-mode');
-        alert("Admin mode disabled. Back to Public View.");
-        const queueEl = document.getElementById('adminQueue');
-        if (queueEl) queueEl.innerHTML = "";
+        alert("Logged out.");
+        render();
         return;
     }
 
-    const entry = prompt("UHA Admin Access Required:");
+    const email = prompt("Admin Email:");
+    const pass = prompt("Admin Password:");
     
-    if (entry === ADMIN_PASSWORD) {
-        isAdmin = true;
-        document.body.classList.add('admin-mode');
-        alert("Admin mode enabled!");
-        renderQueue(); 
-    } else if (entry !== null) {
-        alert("Incorrect password.");
+    if (email && pass) {
+        adminLogin(email, pass);
     }
 }
 
@@ -71,6 +77,18 @@ db.ref('/').on('value', (snapshot) => {
         syncStatus.style.color = "#e74c3c";
     }
 });
+
+	function setView(v) { 
+    currentView = v;
+    currentPage = 1;
+    
+    const btnS = document.getElementById('vS');
+    const btnD = document.getElementById('vD');
+    if (btnS) btnS.classList.toggle('active-tab', v === 'singles');
+    if (btnD) btnD.classList.toggle('active-tab', v === 'doubles');
+    
+    filterTable();
+}
 
     function setMode(m) { 
     mode = m; 
@@ -521,44 +539,27 @@ function recalculateSingleMatch(m) {
     localStorage.setItem('hbFullH', JSON.stringify(history));
     localStorage.setItem('hbFullPending', JSON.stringify(pending));
 
-    db.ref('/').set({
-        players: players,
-        history: history,
-        pending: pending
-    }).then(() => {
-        const syncStatus = document.getElementById('syncStatus');
-        if (syncStatus) {
-            const now = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-            syncStatus.innerText = "Cloud Synced: " + now;
-            syncStatus.style.color = "#2ecc71";
-        }
-    }).catch((err) => {
-        console.error("Save Error:", err);
-        const syncStatus = document.getElementById('syncStatus');
-        if (syncStatus) {
-            syncStatus.innerText = "Sync Failed (Offline?)";
-            syncStatus.style.color = "#e74c3c";
-        }
-    });
+    if (isAdmin) {
+        db.ref('/').set({ players, history, pending });
+    } else {
+        db.ref('pending').set(pending);
+    }
 
     render();
     runH2H();
 }
 
     function filterTable() {
-    console.log("Filtering table...");
-
+	console.log("Filtering table...");	
     const searchInput = document.getElementById('playerSearch');
     const body = document.getElementById('leaderboardBody');
     const controls = document.getElementById('paginationControls');
 
-    if (!body || !searchInput) {
-        console.error("Missing HTML elements! Check your IDs.");
-        return;
-    }
+    if (!body || !searchInput) return;
 
     const searchTerm = searchInput.value.toLowerCase();
-    const view = typeof currentView !== 'undefined' ? currentView : 'singles';
+
+    const view = currentView; 
     const peakKey = view === 'singles' ? 'peakS' : 'peakD';
 
     const globalRanked = [...players]
@@ -574,8 +575,6 @@ function recalculateSingleMatch(m) {
     );
 
     const totalPages = Math.ceil(filtered.length / rowsPerPage) || 1;
-    if (currentPage > totalPages) currentPage = 1;
-
     const start = (currentPage - 1) * rowsPerPage;
     const paginatedItems = filtered.slice(start, start + rowsPerPage);
 
@@ -599,8 +598,10 @@ function recalculateSingleMatch(m) {
             `;
         }
     }
-    console.log("Table rendered successfully.");
+		console.log("Table rendered successfully.");
 }
+}
+    
 
 function changePage(step) {
     currentPage += step;
