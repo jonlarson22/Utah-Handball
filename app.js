@@ -56,7 +56,12 @@ db.ref('/').on('value', (snapshot) => {
     if (data) {
         players = data.players || [];
         history = data.history || [];
-        pending = data.pending || [];
+        
+        const pendingData = data.pending || {};
+        pending = Object.keys(pendingData).map(key => ({
+            ...pendingData[key],
+            firebaseKey: key
+        }));
         
         render(); 
         if (isAdmin) renderQueue();
@@ -195,23 +200,25 @@ function loadEditData() {
 
     if (isAdmin) {
         calculateAndAddMatch(activeMode, winners, losers, games);
+        save(); 
         alert("Match recorded and rankings updated!");
     } else {
-        pending.push({
+        db.ref('pending').push({
             id: Date.now(),
             mode: activeMode,
-            winners,
-            losers,
-            games,
+            winners: winners,
+            losers: losers,
+            games: games,
             submittedAt: new Date().toISOString()
         });
         alert("Match submitted for review! An admin will approve it shortly.");
     }
 
-    ['g1_w','g2_w','g3_w','g1_l','g2_l','g3_l'].forEach(id => document.getElementById(id).value = '');
-    save(); 
+    ['g1_w','g2_w','g3_w','g1_l','g2_l','g3_l'].forEach(id => {
+        const el = document.getElementById(id);
+        if(el) el.value = '';
+    });
 }
-
 function calculateAndAddMatch(activeMode, winners, losers, games) {
     const winObjs = players.filter(p => winners.includes(p.id.toString()));
     const lossObjs = players.filter(p => losers.includes(p.id.toString()));
@@ -306,9 +313,8 @@ function approveMatch(index) {
         tW += g.w; tL += g.l;
         if(g.w > g.l) setsW++; else setsL++;
     });
-
-	const winObjs = players.filter(p => winners.some(id => id == p.id));
-	const lossObjs = players.filter(p => losers.some(id => id == p.id));
+    const winObjs = players.filter(p => winners.some(id => id == p.id));
+    const lossObjs = players.filter(p => losers.some(id => id == p.id));
 
     const peakKey = activeMode === 'singles' ? 'peakS' : 'peakD';
     let oldPeaks = {};
@@ -316,6 +322,7 @@ function approveMatch(index) {
 
     const avgW = winObjs.reduce((a, b) => a + (b[activeMode] || 1000), 0) / winObjs.length;
     const avgL = lossObjs.reduce((a, b) => a + (b[activeMode] || 1000), 0) / lossObjs.length;
+
     const baseGain = 15 * (Math.pow((tW - tL + 24), 0.7) / (7.5 + (0.01 * (avgW - avgL))));
     
     let impactMap = {}; 
@@ -338,17 +345,21 @@ function approveMatch(index) {
     history.unshift({ 
         id: Date.now(), 
         mode: activeMode, 
-        winners, 
-        losers,  
+        winners, losers,  
         score: `${setsW}-${setsL}`, 
         detailedGames: matchGames,      
         impacts: impactMap,
         oldPeaks: oldPeaks
     });
 
-    pending.splice(index, 1);
+    if (m.firebaseKey) {
+        db.ref(`pending/${m.firebaseKey}`).remove()
+            .then(() => console.log("Removed from Cloud Queue"))
+            .catch(e => console.error("Firebase error:", e));
+    }
+
     save();
-    alert("Match Approved and Ratings Updated!");
+    alert("Match Approved!");
 }
 
 function reviewSub(index) {
@@ -380,6 +391,12 @@ function reviewSub(index) {
         });
     }
 
+    if (m.firebaseKey) {
+        db.ref(`pending/${m.firebaseKey}`).remove()
+            .then(() => console.log("Match moved from Queue to Editor."))
+            .catch(err => console.error("Error removing match from queue:", err));
+    }
+
     pending.splice(index, 1);
     save();
 
@@ -390,9 +407,21 @@ function reviewSub(index) {
     
     alert("Match loaded into the form. Review the scores and click 'SUBMIT SCORE' to finalize.");
 }
-
 function rejectSub(index) {
-    if(confirm("Permanently delete this submission?")) {
+    const m = pending[index];
+    if (!m) return;
+
+    if (confirm("Permanently delete this submission?")) {
+        if (m.firebaseKey) {
+            db.ref(`pending/${m.firebaseKey}`).remove()
+                .then(() => {
+                    console.log("Match rejected and removed from Firebase.");
+                })
+                .catch((error) => {
+                    console.error("Firebase rejection failed:", error);
+                });
+        }
+
         pending.splice(index, 1);
         save();
         renderQueue();
@@ -540,9 +569,8 @@ function recalculateSingleMatch(m) {
     localStorage.setItem('hbFullPending', JSON.stringify(pending));
 
     if (isAdmin) {
-        db.ref('/').set({ players, history, pending });
-    } else {
-        db.ref('pending').set(pending);
+        db.ref('players').set(players);
+        db.ref('history').set(history);
     }
 
     render();
@@ -600,9 +628,7 @@ function recalculateSingleMatch(m) {
     }
 		console.log("Table rendered successfully.");
 }
-}
-    
-
+  
 function changePage(step) {
     currentPage += step;
     filterTable();
