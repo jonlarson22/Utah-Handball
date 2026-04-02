@@ -125,10 +125,14 @@ function showToast(message, isError = false) {
     toast.style.background = isError ? "#e74c3c" : "#2ecc71";
     
     toast.style.display = "block";
-    setTimeout(() => { toast.style.opacity = "1"; }, 10);
+    setTimeout(() => { 
+        toast.style.opacity = "1"; 
+        toast.style.top = "20px";
+    }, 10);
 
     setTimeout(() => {
         toast.style.opacity = "0";
+        toast.style.top = "-50px";
         setTimeout(() => { toast.style.display = "none"; }, 300);
     }, 3000);
 }
@@ -412,19 +416,26 @@ function rejectSub(index) {
 }
 	
     function runH2H() {
-    const idA = document.getElementById('h2hA').value, idB = document.getElementById('h2hB').value;
-    if(idA === "0" || idB === "0" || idA === idB) { 
+    const rawIdA = document.getElementById('h2hA').value;
+    const rawIdB = document.getElementById('h2hB').value;
+    
+    if (rawIdA === "0" || rawIdB === "0" || rawIdA === rawIdB) { 
         document.getElementById('h2hResults').style.display = 'none'; 
         return; 
     }
+
+    const idA = Number(rawIdA);
+    const idB = Number(rawIdB);
     
     let winsA = 0, winsB = 0, total = 0, recentHTML = "";
     
     history.forEach(m => {
         if (m.mode !== h2hMode) return; 
 
-        const aInW = m.winners.includes(idA), aInL = m.losers.includes(idA);
-        const bInW = m.winners.includes(idB), bInL = m.losers.includes(idB);
+        const aInW = m.winners.includes(idA);
+        const aInL = m.losers.includes(idA);
+        const bInW = m.winners.includes(idB);
+        const bInL = m.losers.includes(idB);
         
         if ((aInW && bInL) || (aInL && bInW)) {
             total++;
