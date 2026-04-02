@@ -319,18 +319,19 @@ function renderQueue() {
     calculateAndAddMatch(m.mode, cleanWinners, cleanLosers, m.games);
 
     const matchKey = m.firebaseKey;
+
     pending.splice(index, 1);
 
     if (matchKey) {
         db.ref(`pending/${matchKey}`).remove()
             .then(() => {
-                console.log("Match removed from cloud queue. Saving ratings...");
+                console.log("Match removed from cloud. Saving data...");
                 save();
                 alert("Match Approved and ELO Updated!");
             })
             .catch(e => {
                 console.error("Firebase Error:", e);
-                save();
+                save(); 
             });
     } else {
         save();
