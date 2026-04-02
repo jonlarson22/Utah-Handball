@@ -2,7 +2,7 @@ function adminLogin(email, password) {
     firebase.auth().signInWithEmailAndPassword(email, password)
       .then((userCredential) => {
         isAdmin = true;
-        // This is the line that makes the admin buttons actually appear:
+
         document.body.classList.add('admin-mode'); 
         alert("Admin Verified!");
         render();
@@ -311,10 +311,10 @@ function renderQueue() {
     const m = pending[index];
     if (!m) return;
 
-    const winners = m.winners;
-    const losers = m.losers;
+	const winners = m.winners.map(id => Number(id));
+    const losers = m.losers.map(id => Number(id));
 
-    console.log("Approving Match for:", winners, "vs", losers);
+	console.log("Approving Match for:", winners, "vs", losers);
 
     calculateAndAddMatch(m.mode, winners, losers, m.games);
 
@@ -326,7 +326,7 @@ function renderQueue() {
 
     pending.splice(index, 1);
     save(); 
-    
+
     alert("Match Approved and ELO Updated!");
 }
 
