@@ -311,23 +311,32 @@ function renderQueue() {
     const m = pending[index];
     if (!m) return;
 
-    const winners = m.winners.map(Number); 
+    const winners = m.winners.map(Number);
     const losers = m.losers.map(Number);
 
-    console.log("Approving Match for:", winners, "vs", losers);
+    const historyCountBefore = history.length;
+
+    console.log("Processing ELO for:", winners, "vs", losers);
 
     calculateAndAddMatch(m.mode, winners, losers, m.games);
 
-    if (m.firebaseKey) {
-        db.ref(`pending/${m.firebaseKey}`).remove()
-            .then(() => console.log("Cloud Queue Cleaned"))
-            .catch(e => console.error("Firebase Error:", e));
+    if (history.length > historyCountBefore) {
+        console.log("Success! Match moved to history.");
+
+        if (m.firebaseKey) {
+            db.ref(`pending/${m.firebaseKey}`).remove()
+                .then(() => console.log("Cloud Queue Cleaned"))
+                .catch(e => console.error("Firebase Error:", e));
+        }
+
+        pending.splice(index, 1);
+        save(); 
+        alert("Match Approved!");
+
+    } else {
+        console.error("ELO Engine Failed: Players likely not found. Check IDs.");
+        alert("Error: Match could not be processed. Check console.");
     }
-
-    pending.splice(index, 1);
-    save(); 
-
-    alert("Match Approved and ELO Updated!");
 }
 
 function reviewSub(index) {
