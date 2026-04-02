@@ -4,7 +4,7 @@ function adminLogin(email, password) {
         isAdmin = true;
 
         document.body.classList.add('admin-mode'); 
-        alert("Admin Verified!");
+        showToast("Admin Verified!");
         render();
       })
       .catch((error) => {
@@ -19,7 +19,7 @@ function checkAdmin() {
         firebase.auth().signOut();
         isAdmin = false;
         document.body.classList.remove('admin-mode');
-        alert("Logged out.");
+        showToast("Logged out.");
         render();
         return;
     }
@@ -119,6 +119,20 @@ function setH2HMode(m) {
     runH2H(); 
 }
 
+function showToast(message, isError = false) {
+    const toast = document.getElementById('toast');
+    toast.innerText = message;
+    toast.style.background = isError ? "#e74c3c" : "#2ecc71";
+    
+    toast.style.display = "block";
+    setTimeout(() => { toast.style.opacity = "1"; }, 10);
+
+    setTimeout(() => {
+        toast.style.opacity = "0";
+        setTimeout(() => { toast.style.display = "none"; }, 300);
+    }, 3000);
+}
+
 function addPlayer() {
     const n = document.getElementById('addN').value.trim();
     if(n) { 
@@ -170,7 +184,7 @@ function loadEditData() {
         }
 
         save(); 
-        alert("Player updated! (Baselines only changed if ratings were modified)"); 
+        showToast("Player updated! (Baselines only changed if ratings were modified)"); 
     }
 }
 
@@ -204,7 +218,7 @@ function loadEditData() {
     if (isAdmin) {
         calculateAndAddMatch(activeMode, winners, losers, games);
         save(); 
-        alert("Match recorded and rankings updated!");
+        showToast("Match recorded and rankings updated!");
     } else {
         db.ref('pending').push({
             id: Date.now(),
@@ -214,7 +228,7 @@ function loadEditData() {
             games: games,
             submittedAt: new Date().toISOString()
         });
-        alert("Match submitted for review! An admin will approve it shortly.");
+        showToast("Match submitted for review!");
     }
 
     ['g1_w','g2_w','g3_w','g1_l','g2_l','g3_l'].forEach(id => {
@@ -324,7 +338,7 @@ function renderQueue() {
         pending.splice(index, 1);
 
         save(); 
-        alert("Match Approved!");
+        showToast("Match Approved!");
     } else {
         console.error("ELO Engine Failed: Check if player IDs exist.");
         alert("Error: Match could not be processed.");
@@ -374,7 +388,7 @@ function reviewSub(index) {
         behavior: 'smooth' 
     });
     
-    alert("Match loaded into the form. Review the scores and click 'SUBMIT SCORE' to finalize.");
+    showToast("Match loaded. Review then click 'SUBMIT SCORE' to finalize.");
 }
 function rejectSub(index) {
     const m = pending[index];
@@ -462,7 +476,7 @@ function importFullData(e) {
             history = data.history || [];
             pending = data.pending || [];
             save(); 
-            alert("Import complete!");
+            showToast("Import complete!");
         } catch(err) { alert("Invalid file."); }
     };
     reader.readAsText(e.target.files[0]);
@@ -624,7 +638,7 @@ function changeStatus(hide) {
     
     p.hidden = hide;
     save();
-    alert(`${p.name} is now ${hide ? 'Retired' : 'Active'}!`);
+    showToast(`${p.name} is now ${hide ? 'Retired' : 'Active'}!`);
 }
 
 function loadPlayer() {
