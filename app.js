@@ -214,10 +214,10 @@ function loadEditData() {
     }
 
     let rawWinners = activeMode === 'singles' ? [w1ID] : [w1ID, w2ID];
-    let rawLosers = activeMode === 'singles' ? [l1ID] : [l1ID, l2ID];
+	let rawLosers = activeMode === 'singles' ? [l1ID] : [l1ID, l2ID];
 
-    const winners = rawWinners.filter(id => id !== "0" && id !== "");
-    const losers = rawLosers.filter(id => id !== "0" && id !== "");
+    const winners = rawWinners.filter(id => id !== "0").map(Number);
+	const losers = rawLosers.filter(id => id !== "0").map(Number);
 
     if (isAdmin) {
         calculateAndAddMatch(activeMode, winners, losers, games);
@@ -427,7 +427,8 @@ function runH2H() {
     let winsA = 0, winsB = 0, total = 0, recentHTML = "";
     
     history.forEach(m => {
-        if (m.mode !== h2hMode) return; 
+        console.log("Checking match:", m.mode, "against", h2hMode);
+    	if (m.mode !== h2hMode) return; 
 
         const aInW = m.winners.some(id => id == idA);
         const aInL = m.losers.some(id => id == idA);
@@ -516,8 +517,8 @@ function recalculateSingleMatch(m) {
     const activeMode = m.mode || 'singles';
     const peakKey = activeMode === 'singles' ? 'peakS' : 'peakD';
 
-    const winObjs = players.filter(p => m.winners.includes(p.id.toString()));
-    const lossObjs = players.filter(p => m.losers.includes(p.id.toString()));
+    const winObjs = players.filter(p => m.winners.some(id => id == p.id));
+	const lossObjs = players.filter(p => m.losers.some(id => id == p.id));
 
     if (winObjs.length === 0 || lossObjs.length === 0) return;
 
