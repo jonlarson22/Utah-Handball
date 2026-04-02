@@ -311,31 +311,23 @@ function renderQueue() {
     const m = pending[index];
     if (!m) return;
 
-    const cleanWinners = m.winners.map(id => id.toString());
-    const cleanLosers = m.losers.map(id => id.toString());
+    const winners = m.winners;
+    const losers = m.losers;
 
-    console.log("Approving Match:", cleanWinners, "vs", cleanLosers);
+    console.log("Approving Match for:", winners, "vs", losers);
 
-    calculateAndAddMatch(m.mode, cleanWinners, cleanLosers, m.games);
+    calculateAndAddMatch(m.mode, winners, losers, m.games);
 
-    const matchKey = m.firebaseKey;
+    if (m.firebaseKey) {
+        db.ref(`pending/${m.firebaseKey}`).remove()
+            .then(() => console.log("Cloud Queue Cleaned"))
+            .catch(e => console.error("Firebase Error:", e));
+    }
 
     pending.splice(index, 1);
-
-    if (matchKey) {
-        db.ref(`pending/${matchKey}`).remove()
-            .then(() => {
-                console.log("Match removed from cloud. Saving data...");
-                save();
-                alert("Match Approved and ELO Updated!");
-            })
-            .catch(e => {
-                console.error("Firebase Error:", e);
-                save(); 
-            });
-    } else {
-        save();
-    }
+    save(); 
+    
+    alert("Match Approved and ELO Updated!");
 }
 
 function reviewSub(index) {
