@@ -439,10 +439,12 @@ function runH2H() {
             total++;
             if (aInW) winsA++; else winsB++;
             
-            if (total <= 5) {
+           if (total <= 5) {
     const isDoubles = m.mode === 'doubles';
     const wNames = m.winners.map(id => players.find(x => x.id == id)?.name || "??").join('/');
     const lNames = m.losers.map(id => players.find(x => x.id == id)?.name || "??").join('/');
+
+    const isFirst = (total === 1);
 
     let matchupHTML = "";
     if (isDoubles) {
@@ -460,7 +462,9 @@ function runH2H() {
     }
 
     recentHTML += `
-        <div class="h2h-recent-item" style="display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid #333;">
+        <div class="h2h-recent-item" style="display: flex; justify-content: space-between; align-items: center; 
+            padding: ${isFirst ? '0 0 10px 0' : '10px 0'}; 
+            ${isFirst ? '' : 'border-top: 1px solid #333;'}">
             <div style="font-size: 11px;">${matchupHTML}</div>
             <div style="text-align: right; min-width: 60px;">
                 <div style="font-weight: bold; color: #fff;">${m.score}</div>
