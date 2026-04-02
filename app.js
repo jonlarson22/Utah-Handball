@@ -415,27 +415,24 @@ function rejectSub(index) {
     }
 }
 	
-    function runH2H() {
-    const rawIdA = document.getElementById('h2hA').value;
-    const rawIdB = document.getElementById('h2hB').value;
+function runH2H() {
+    const idA = document.getElementById('h2hA').value;
+    const idB = document.getElementById('h2hB').value;
     
-    if (rawIdA === "0" || rawIdB === "0" || rawIdA === rawIdB) { 
+    if (idA === "0" || idB === "0" || idA === idB) { 
         document.getElementById('h2hResults').style.display = 'none'; 
         return; 
     }
-
-    const idA = Number(rawIdA);
-    const idB = Number(rawIdB);
     
     let winsA = 0, winsB = 0, total = 0, recentHTML = "";
     
     history.forEach(m => {
         if (m.mode !== h2hMode) return; 
 
-        const aInW = m.winners.includes(idA);
-        const aInL = m.losers.includes(idA);
-        const bInW = m.winners.includes(idB);
-        const bInL = m.losers.includes(idB);
+        const aInW = m.winners.some(id => id == idA);
+        const aInL = m.losers.some(id => id == idA);
+        const bInW = m.winners.some(id => id == idB);
+        const bInL = m.losers.some(id => id == idB);
         
         if ((aInW && bInL) || (aInL && bInW)) {
             total++;
