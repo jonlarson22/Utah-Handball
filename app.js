@@ -2,6 +2,7 @@ function adminLogin(email, password) {
     firebase.auth().signInWithEmailAndPassword(email, password)
       .then((userCredential) => {
         isAdmin = true;
+        // This is the line that makes the admin buttons actually appear:
         document.body.classList.add('admin-mode'); 
         alert("Admin Verified!");
         render();
@@ -52,7 +53,6 @@ let currentView = 'singles';
 let h2hMode = 'singles';
 let currentPage = 1;
 const rowsPerPage = 20;
-let editingMatchID = null;
 
 db.ref('/').on('value', (snapshot) => {
     const data = snapshot.val();
@@ -174,99 +174,97 @@ function loadEditData() {
     }
 }
 
-function applyElo(match, playerList) {
-    const mode = match.mode || 'singles';
-    const winners = playerList.filter(p => match.winners.includes(p.id.toString()));
-    const losers = playerList.filter(p => match.losers.includes(p.id.toString()));
-    
-    if (!winners.length || !losers.length) return;
-
-    let tW = 0, tL = 0;
-    match.detailedGames.forEach(g => { tW += g.w; tL += g.l; });
-
-    const avgW = winners.reduce((a, b) => a + (b[mode] || 1000), 0) / winners.length;
-    const avgL = losers.reduce((a, b) => a + (b[mode] || 1000), 0) / losers.length;
-
-    const baseGain = 15 * (Math.pow((tW - tL + 24), 0.7) / (7.5 + (0.01 * (avgW - avgL))));
-
-    match.impacts = {};
-    [...winners, ...losers].forEach(p => {
-        const isWinner = match.winners.includes(p.id.toString());
-        const ratio = mode === 'doubles' ? (p[mode] / ((isWinner ? avgW : avgL) * (isWinner ? winners.length : losers.length))) * 2 : 1;
-        const pts = Math.round((baseGain * Math.min(1.25, Math.max(0.75, ratio))) * 10) / 10;
-        
-        p[mode] = Math.round((p[mode] + (isWinner ? pts : -pts)) * 10) / 10;
-        const peakKey = mode === 'singles' ? 'peakS' : 'peakD';
-        if (p[mode] > (p[peakKey] || 0)) p[peakKey] = p[mode];
-        
-        match.impacts[p.id] = isWinner ? pts : -pts;
-    });
-}
-
-function fullRecalculate() {
-
-    players.forEach(p => {
-        p.singles = p.baseS || 1000;
-        p.doubles = p.baseD || 1000;
-        p.peakS = p.singles;
-        p.peakD = p.doubles;
-    });
-
-    const chronological = [...history].sort((a, b) => a.id - b.id);
-    chronological.forEach(m => applyElo(m, players));
-    
-    save();
-}
-
     function processMatch() {
     const w1ID = document.getElementById('w1').value;
     const w2ID = document.getElementById('w2').value;
     const l1ID = document.getElementById('l1').value;
     const l2ID = document.getElementById('l2').value;
+    
     const activeMode = mode || 'singles';
     let games = [];
 
     for(let i=1; i<=3; i++) { 
         const wVal = parseInt(document.getElementById(`g${i}_w`).value);
         const lVal = parseInt(document.getElementById(`g${i}_l`).value);
-        if(!isNaN(wVal) && !isNaN(lVal)) games.push({w: wVal, l: lVal});
+        if(!isNaN(wVal) && !isNaN(lVal)) {
+            games.push({w: wVal, l: lVal});
+        }
     }
     
     if(w1ID === "0" || l1ID === "0" || games.length === 0) {
         return alert("Please select players and enter scores.");
     }
 
-    const winners = activeMode === 'singles' ? [w1ID] : [w1ID, w2ID].filter(id => id !== "0");
-    const losers = activeMode === 'singles' ? [l1ID] : [l1ID, l2ID].filter(id => id !== "0");
+    let rawWinners = activeMode === 'singles' ? [w1ID] : [w1ID, w2ID];
+    let rawLosers = activeMode === 'singles' ? [l1ID] : [l1ID, l2ID];
+
+    const winners = rawWinners.filter(id => id !== "0" && id !== "");
+    const losers = rawLosers.filter(id => id !== "0" && id !== "");
 
     if (isAdmin) {
-        let setsW = 0, setsL = 0;
-        games.forEach(g => { if(g.w > g.l) setsW++; else setsL++; });
-
-        history.push({
-            id: editingMatchID || Date.now(),
-            mode: activeMode,
-            winners, losers,
-            score: `${setsW}-${setsL}`,
-            detailedGames: games
-        });
-        editingMatchID = null;
-        fullRecalculate();
-		console.log("History after submit:", history);
-        alert("Match recorded!");
+        calculateAndAddMatch(activeMode, winners, losers, games);
+        save(); 
+        alert("Match recorded and rankings updated!");
     } else {
         db.ref('pending').push({
             id: Date.now(),
             mode: activeMode,
-            winners, losers,
+            winners: winners,
+            losers: losers,
             games: games,
             submittedAt: new Date().toISOString()
         });
-        alert("Match submitted for review!");
+        alert("Match submitted for review! An admin will approve it shortly.");
     }
 
     ['g1_w','g2_w','g3_w','g1_l','g2_l','g3_l'].forEach(id => {
-        if(document.getElementById(id)) document.getElementById(id).value = '';
+        const el = document.getElementById(id);
+        if(el) el.value = '';
+    });
+}
+function calculateAndAddMatch(activeMode, winners, losers, games) {
+    const winObjs = players.filter(p => winners.includes(p.id.toString()));
+    const lossObjs = players.filter(p => losers.includes(p.id.toString()));
+
+    let setsW = 0, setsL = 0, tW = 0, tL = 0;
+    games.forEach(g => {
+        tW += g.w; tL += g.l;
+        if(g.w > g.l) setsW++; else setsL++;
+    });
+
+    const avgW = winObjs.reduce((a, b) => a + (b[activeMode] || 1000), 0) / winObjs.length;
+    const avgL = lossObjs.reduce((a, b) => a + (b[activeMode] || 1000), 0) / lossObjs.length;
+    const baseGain = 15 * (Math.pow((tW - tL + 24), 0.7) / (7.5 + (0.01 * (avgW - avgL))));
+    
+    let impactMap = {}; 
+    let peakKey = activeMode === 'singles' ? 'peakS' : 'peakD';
+    let oldPeaks = {};
+
+    [...winObjs, ...lossObjs].forEach(p => { oldPeaks[p.id] = p[peakKey] || 1000; });
+
+    winObjs.forEach(p => {
+        let ratio = activeMode === 'doubles' ? (p[activeMode] / (avgW * winObjs.length)) * 2 : 1;
+        let pts = Math.round((baseGain * Math.min(1.25, Math.max(0.75, ratio))) * 10) / 10;
+        p[activeMode] = Math.round((p[activeMode] + pts) * 10) / 10;
+        if (p[activeMode] > (p[peakKey] || 0)) p[peakKey] = p[activeMode];
+        impactMap[p.id] = pts;
+    });
+
+    lossObjs.forEach(p => {
+        let ratio = activeMode === 'doubles' ? (p[activeMode] / (avgL * lossObjs.length)) * 2 : 1;
+        let pts = Math.round((baseGain * Math.min(1.25, Math.max(0.75, ratio))) * 10) / 10;
+        p[activeMode] = Math.round((p[activeMode] - pts) * 10) / 10;
+        impactMap[p.id] = -pts;
+    });
+
+    history.unshift({ 
+        id: Date.now(), 
+        mode: activeMode, 
+        winners, losers,  
+        score: `${setsW}-${setsL}`, 
+        detailedGames: games,      
+        impacts: impactMap,
+        oldPeaks: oldPeaks
     });
 }
 
@@ -308,25 +306,62 @@ function approveMatch(index) {
     const m = pending[index];
     if (!m) return;
 
-    let setsW = 0, setsL = 0;
-    m.games.forEach(g => { if(g.w > g.l) setsW++; else setsL++; });
+    const activeMode = m.mode;
+    const winners = m.winners;
+    const losers = m.losers;
+    const matchGames = m.games;
 
-    history.push({ 
+    let setsW = 0, setsL = 0, tW = 0, tL = 0;
+    matchGames.forEach(g => {
+        tW += g.w; tL += g.l;
+        if(g.w > g.l) setsW++; else setsL++;
+    });
+    const winObjs = players.filter(p => winners.some(id => id == p.id));
+    const lossObjs = players.filter(p => losers.some(id => id == p.id));
+
+    const peakKey = activeMode === 'singles' ? 'peakS' : 'peakD';
+    let oldPeaks = {};
+    [...winObjs, ...lossObjs].forEach(p => { oldPeaks[p.id] = p[peakKey] || 1000; });
+
+    const avgW = winObjs.reduce((a, b) => a + (b[activeMode] || 1000), 0) / winObjs.length;
+    const avgL = lossObjs.reduce((a, b) => a + (b[activeMode] || 1000), 0) / lossObjs.length;
+
+    const baseGain = 15 * (Math.pow((tW - tL + 24), 0.7) / (7.5 + (0.01 * (avgW - avgL))));
+    
+    let impactMap = {}; 
+
+    winObjs.forEach(p => {
+        let ratio = activeMode === 'doubles' ? (p[activeMode] / (avgW * winObjs.length)) * 2 : 1;
+        let pts = Math.round((baseGain * Math.min(1.25, Math.max(0.75, ratio))) * 10) / 10;
+        p[activeMode] = Math.round((p[activeMode] + pts) * 10) / 10;
+        if (p[activeMode] > (p[peakKey] || 0)) p[peakKey] = p[activeMode];
+        impactMap[p.id] = pts;
+    });
+
+    lossObjs.forEach(p => {
+        let ratio = activeMode === 'doubles' ? (p[activeMode] / (avgL * lossObjs.length)) * 2 : 1;
+        let pts = Math.round((baseGain * Math.min(1.25, Math.max(0.75, ratio))) * 10) / 10;
+        p[activeMode] = Math.round((p[activeMode] - pts) * 10) / 10;
+        impactMap[p.id] = -pts;
+    });
+
+    history.unshift({ 
         id: Date.now(), 
-        mode: m.mode, 
-        winners: m.winners, 
-        losers: m.losers, 
+        mode: activeMode, 
+        winners, losers,  
         score: `${setsW}-${setsL}`, 
-        detailedGames: m.games 
+        detailedGames: matchGames,      
+        impacts: impactMap,
+        oldPeaks: oldPeaks
     });
 
     if (m.firebaseKey) {
         db.ref(`pending/${m.firebaseKey}`).remove()
+            .then(() => console.log("Removed from Cloud Queue"))
             .catch(e => console.error("Firebase error:", e));
     }
 
-    pending.splice(index, 1);
-    fullRecalculate();
+    save();
     alert("Match Approved!");
 }
 
@@ -467,35 +502,68 @@ function importFullData(e) {
     reader.readAsText(e.target.files[0]);
 }
 
-	function undoMatch(id) {
-    if(!confirm("Delete this match?")) return;
+    function undoMatch(id) {
+    if(!confirm("Delete this match? This will recalculate the entire history using individual player baselines to ensure all ELO shifts are accurate.")) return;
 
     history = history.filter(m => m.id !== id);
-    fullRecalculate();
-}
 
-function editMatch(id) {
-    const m = history.find(x => x.id === id);
-    if (!m || !confirm("Load match into editor?")) return;
-
-    editingMatchID = m.id; 
-    setMode(m.mode);
-    
-    document.getElementById('w1').value = m.winners[0] || "0";
-    document.getElementById('l1').value = m.losers[0] || "0";
-    if (m.mode === 'doubles') {
-        document.getElementById('w2').value = m.winners[1] || "0";
-        document.getElementById('l2').value = m.losers[1] || "0";
-    }
-    m.detailedGames.forEach((g, i) => {
-        if(document.getElementById(`g${i+1}_w`)) document.getElementById(`g${i+1}_w`).value = g.w;
-        if(document.getElementById(`g${i+1}_l`)) document.getElementById(`g${i+1}_l`).value = g.l;
+    players.forEach(p => {
+        p.singles = p.baseS || 1000;
+        p.doubles = p.baseD || 1000;
+        
+        p.peakS = p.singles;
+        p.peakD = p.doubles;
     });
 
-    history = history.filter(match => match.id !== id);
-    fullRecalculate();
+    const chronologicalHistory = [...history].reverse();
 
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    chronologicalHistory.forEach(match => {
+        recalculateSingleMatch(match);
+    });
+
+    save();
+}
+
+function recalculateSingleMatch(m) {
+    const activeMode = m.mode || 'singles';
+    const peakKey = activeMode === 'singles' ? 'peakS' : 'peakD';
+
+    const winObjs = players.filter(p => m.winners.includes(p.id.toString()));
+    const lossObjs = players.filter(p => m.losers.includes(p.id.toString()));
+
+    if (winObjs.length === 0 || lossObjs.length === 0) return;
+
+    let tW = 0, tL = 0;
+    if (m.detailedGames) {
+        m.detailedGames.forEach(g => { tW += g.w; tL += g.l; });
+    }
+
+    const avgW = winObjs.reduce((a, b) => a + (b[activeMode] || 1000), 0) / winObjs.length;
+    const avgL = lossObjs.reduce((a, b) => a + (b[activeMode] || 1000), 0) / lossObjs.length;
+
+    const baseGain = 15 * (Math.pow((tW - tL + 24), 0.7) / (7.5 + (0.01 * (avgW - avgL))));
+
+    let newImpacts = {};
+
+    winObjs.forEach(p => {
+        let ratio = activeMode === 'doubles' ? (p[activeMode] / (avgW * winObjs.length)) * 2 : 1;
+        let pts = Math.round((baseGain * Math.min(1.25, Math.max(0.75, ratio))) * 10) / 10;
+        
+        p[activeMode] = Math.round((p[activeMode] + pts) * 10) / 10;
+        
+        if (p[activeMode] > (p[peakKey] || 0)) p[peakKey] = p[activeMode];
+        newImpacts[p.id] = pts;
+    });
+
+    lossObjs.forEach(p => {
+        let ratio = activeMode === 'doubles' ? (p[activeMode] / (avgL * lossObjs.length)) * 2 : 1;
+        let pts = Math.round((baseGain * Math.min(1.25, Math.max(0.75, ratio))) * 10) / 10;
+        
+        p[activeMode] = Math.round((p[activeMode] - pts) * 10) / 10;
+        newImpacts[p.id] = -pts;
+    });
+
+    m.impacts = newImpacts;
 }
 
 	function save() {
@@ -682,20 +750,18 @@ function render() {
                 '';
 
             return `<tr>
-    <td>${m.mode ? m.mode.toUpperCase() : '---'}</td>
-    <td style="font-size:11px">${matchupHTML}</td>
-    <td style="text-align:center;">
-        <div style="font-weight:bold;">${m.score || '0-0'}</div>
-        ${detailedScore}
-    </td>
-    <td style="font-size:10px">${shiftHTML}</td>
-    
-    <td class="admin-only">
-        <button onclick="editMatch(${m.id})" style="background: #3498db; color: white; border: none; padding: 5px 10px; cursor: pointer; border-radius: 4px; margin-right: 5px;">Edit</button>
-        
-        <button class="undo-btn" onclick="undoMatch(${m.id})">Delete</button>
-    </td>
-</tr>`;
+                <td>${m.mode ? m.mode.toUpperCase() : '---'}</td>
+                <td style="font-size:11px">${matchupHTML}</td>
+                <td style="text-align:center;">
+                    <div style="font-weight:bold;">${m.score || '0-0'}</div>
+                    ${detailedScore}
+                </td>
+                <td style="font-size:10px">${shiftHTML}</td>
+                
+                <td class="admin-only">
+                    <button class="undo-btn" onclick="undoMatch(${m.id})">Delete</button>
+                </td>
+            </tr>`;
         }).join('');
     }
     
