@@ -440,15 +440,34 @@ function runH2H() {
             if (aInW) winsA++; else winsB++;
             
             if (total <= 5) {
-                const wNames = m.winners.map(id => players.find(x => x.id == id)?.name || "??").join('/');
-                const lNames = m.losers.map(id => players.find(x => x.id == id)?.name || "??").join('/');
+    const isDoubles = m.mode === 'doubles';
+    const wNames = m.winners.map(id => players.find(x => x.id == id)?.name || "??").join('/');
+    const lNames = m.losers.map(id => players.find(x => x.id == id)?.name || "??").join('/');
 
-                recentHTML += `
-                    <div class="h2h-recent-item">
-                        <span>${wNames} vs ${lNames}</span> 
-                        <strong>${m.score} <small style="opacity:0.6">${getGameString(m)}</small></strong>
-                    </div>`;
-            }
+    let matchupHTML = "";
+    if (isDoubles) {
+        matchupHTML = `
+            <div style="line-height: 1.2;">
+                <div style="color: #2ecc71;">${wNames}</div>
+                <div style="font-size: 9px; color: #666; margin: 2px 0;">— VS —</div>
+                <div style="color: #e74c3c;">${lNames}</div>
+            </div>`;
+    } else {
+        matchupHTML = `
+            <span style="color: #2ecc71;">${wNames}</span> 
+            <small style="color:#666; margin: 0 4px;">vs</small> 
+            <span style="color: #e74c3c;">${lNames}</span>`;
+    }
+
+    recentHTML += `
+        <div class="h2h-recent-item" style="display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid #333;">
+            <div style="font-size: 11px;">${matchupHTML}</div>
+            <div style="text-align: right; min-width: 60px;">
+                <div style="font-weight: bold; color: #fff;">${m.score}</div>
+                <div style="font-size: 10px; color: #888;">${getGameString(m)}</div>
+            </div>
+        </div>`;
+			}
         }
     });
 
