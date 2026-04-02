@@ -298,12 +298,19 @@
         </div>
     </div>
 
-    <div style="margin-top: 20px; display: flex; gap: 10px;">
+   <div style="margin-top: 20px; display: flex; gap: 10px;">
         <button onclick="exportFullData()" style="background:#2ecc71; color: #111; font-weight:bold; flex: 1;">📥 Download Data</button>
         
         <button onclick="document.getElementById('importFile').click()" style="background:#3498db; flex: 1;">📤 Import Data</button>
         
         <input type="file" id="importFile" style="display:none" onchange="importFullData(event)">
+    </div>
+
+    <div style="margin-top: 10px;">
+        <button onclick="if(confirm('This will wipe all current rankings and replay every match in history to fix the ELO. Proceed?')) fullRecalculate()" 
+                style="background:#e67e22; width: 100%; color: white; font-weight: normal; font-size: 12px; padding: 10px;">
+            🔄 Force Global Recalculate (Fix Rankings)
+        </button>
     </div>
 
     <div style="text-align: center; width: 100%; margin-top: 15px;">
