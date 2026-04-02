@@ -223,8 +223,13 @@ function loadEditData() {
     });
 }
 function calculateAndAddMatch(activeMode, winners, losers, games) {
-    const winObjs = players.filter(p => winners.includes(p.id.toString()));
-    const lossObjs = players.filter(p => losers.includes(p.id.toString()));
+    const winObjs = players.filter(p => winners.some(wId => wId == p.id));
+    const lossObjs = players.filter(p => losers.some(lId => lId == p.id));
+
+    if (winObjs.length === 0 || lossObjs.length === 0) {
+        console.error("Math Engine Error: Could not find players for IDs:", winners, losers);
+        return;
+    }
 
     let setsW = 0, setsL = 0, tW = 0, tL = 0;
     games.forEach(g => {
@@ -303,27 +308,34 @@ function renderQueue() {
 }
 
 	function approveMatch(index) {
-	    const m = pending[index];
-	    if (!m) return;
-	
-	    const cleanWinners = m.winners.map(id => id.toString());
-	    const cleanLosers = m.losers.map(id => id.toString());
-	
-	    console.log("Approving Match for:", cleanWinners, "vs", cleanLosers);
-	
-		    calculateAndAddMatch(m.mode, cleanWinners, cleanLosers, m.games);
-	
-	    if (m.firebaseKey) {
-	        db.ref(`pending/${m.firebaseKey}`).remove()
-	            .then(() => console.log("Cloud Queue Cleaned"))
-	            .catch(e => console.error("Firebase Error:", e));
-	    }
-	
-	    pending.splice(index, 1);
+    const m = pending[index];
+    if (!m) return;
 
-	    save(); 
-	    alert("Match Approved and ELO Updated!");
-	}
+    const cleanWinners = m.winners.map(id => id.toString());
+    const cleanLosers = m.losers.map(id => id.toString());
+
+    console.log("Approving Match:", cleanWinners, "vs", cleanLosers);
+
+    calculateAndAddMatch(m.mode, cleanWinners, cleanLosers, m.games);
+
+    const matchKey = m.firebaseKey;
+    pending.splice(index, 1);
+
+    if (matchKey) {
+        db.ref(`pending/${matchKey}`).remove()
+            .then(() => {
+                console.log("Match removed from cloud queue. Saving ratings...");
+                save();
+                alert("Match Approved and ELO Updated!");
+            })
+            .catch(e => {
+                console.error("Firebase Error:", e);
+                save();
+            });
+    } else {
+        save();
+    }
+}
 
 function reviewSub(index) {
     const m = pending[index];
