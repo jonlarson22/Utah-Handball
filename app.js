@@ -316,26 +316,18 @@ function renderQueue() {
 
     const historyCountBefore = history.length;
 
-    console.log("Processing ELO for:", winners, "vs", losers);
-
     calculateAndAddMatch(m.mode, winners, losers, m.games);
 
     if (history.length > historyCountBefore) {
         console.log("Success! Match moved to history.");
 
-        if (m.firebaseKey) {
-            db.ref(`pending/${m.firebaseKey}`).remove()
-                .then(() => console.log("Cloud Queue Cleaned"))
-                .catch(e => console.error("Firebase Error:", e));
-        }
-
         pending.splice(index, 1);
+
         save(); 
         alert("Match Approved!");
-
     } else {
-        console.error("ELO Engine Failed: Players likely not found. Check IDs.");
-        alert("Error: Match could not be processed. Check console.");
+        console.error("ELO Engine Failed: Check if player IDs exist.");
+        alert("Error: Match could not be processed.");
     }
 }
 
@@ -547,19 +539,23 @@ function recalculateSingleMatch(m) {
 
     if (isAdmin) {
         console.log("Attempting Firebase Sync...");
+        const pendingObj = {};
+        pending.forEach(m => {
+            if (m.firebaseKey) {
+                pendingObj[m.firebaseKey] = m;
+            }
+        });
+
         db.ref('/').update({
             players: players,
-            history: history
+            history: history,
+            pending: pendingObj
         }).then(() => {
             console.log("Firebase Sync Success ✅");
         }).catch(err => {
             console.error("Firebase Sync FAILED ❌:", err);
-            alert("Database Error: Check Console.");
         });
-    } else {
-        console.warn("Save ignored: Not logged in as Admin.");
     }
-
     render();
     runH2H();
 }
