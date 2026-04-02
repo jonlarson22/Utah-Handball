@@ -252,6 +252,7 @@ function fullRecalculate() {
         });
         editingMatchID = null;
         fullRecalculate();
+		console.log("History after submit:", history);
         alert("Match recorded!");
     } else {
         db.ref('pending').push({
