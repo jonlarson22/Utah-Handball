@@ -311,10 +311,10 @@ function renderQueue() {
     const m = pending[index];
     if (!m) return;
 
-	const winners = m.winners.map(id => Number(id));
-    const losers = m.losers.map(id => Number(id));
+    const winners = m.winners.map(Number); 
+    const losers = m.losers.map(Number);
 
-	console.log("Approving Match for:", winners, "vs", losers);
+    console.log("Approving Match for:", winners, "vs", losers);
 
     calculateAndAddMatch(m.mode, winners, losers, m.games);
 
