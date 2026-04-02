@@ -355,12 +355,15 @@ function approveMatch(index) {
         oldPeaks: oldPeaks
     });
 
+  calculateAndAddMatch(m.mode, m.winners, m.losers, m.games);
+
     if (m.firebaseKey) {
         db.ref(`pending/${m.firebaseKey}`).remove()
             .then(() => console.log("Removed from Cloud Queue"))
-            .catch(e => console.error("Firebase error:", e));
+            .catch(e => console.error("Firebase removal error:", e));
     }
 
+    pending.splice(index, 1);
     save();
     alert("Match Approved!");
 }
@@ -572,8 +575,18 @@ function recalculateSingleMatch(m) {
     localStorage.setItem('hbFullPending', JSON.stringify(pending));
 
     if (isAdmin) {
-        db.ref('players').set(players);
-        db.ref('history').set(history);
+        console.log("Attempting Firebase Sync...");
+        db.ref('/').update({
+            players: players,
+            history: history
+        }).then(() => {
+            console.log("Firebase Sync Success ✅");
+        }).catch(err => {
+            console.error("Firebase Sync FAILED ❌:", err);
+            alert("Database Error: Check Console.");
+        });
+    } else {
+        console.warn("Save ignored: Not logged in as Admin.");
     }
 
     render();
