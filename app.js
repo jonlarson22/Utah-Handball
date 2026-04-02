@@ -325,19 +325,6 @@ function renderQueue() {
 	    alert("Match Approved and ELO Updated!");
 	}
 
-  calculateAndAddMatch(m.mode, m.winners, m.losers, m.games);
-
-    if (m.firebaseKey) {
-        db.ref(`pending/${m.firebaseKey}`).remove()
-            .then(() => console.log("Removed from Cloud Queue"))
-            .catch(e => console.error("Firebase removal error:", e));
-    }
-
-    pending.splice(index, 1);
-    save();
-    alert("Match Approved!");
-}
-
 function reviewSub(index) {
     const m = pending[index];
     if (!m) return;
