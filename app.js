@@ -302,58 +302,28 @@ function renderQueue() {
     queueEl.innerHTML = html;
 }
 
-function approveMatch(index) {
-    const m = pending[index];
-    if (!m) return;
+	function approveMatch(index) {
+	    const m = pending[index];
+	    if (!m) return;
+	
+	    const cleanWinners = m.winners.map(id => id.toString());
+	    const cleanLosers = m.losers.map(id => id.toString());
+	
+	    console.log("Approving Match for:", cleanWinners, "vs", cleanLosers);
+	
+		    calculateAndAddMatch(m.mode, cleanWinners, cleanLosers, m.games);
+	
+	    if (m.firebaseKey) {
+	        db.ref(`pending/${m.firebaseKey}`).remove()
+	            .then(() => console.log("Cloud Queue Cleaned"))
+	            .catch(e => console.error("Firebase Error:", e));
+	    }
+	
+	    pending.splice(index, 1);
 
-    const activeMode = m.mode;
-    const winners = m.winners;
-    const losers = m.losers;
-    const matchGames = m.games;
-
-    let setsW = 0, setsL = 0, tW = 0, tL = 0;
-    matchGames.forEach(g => {
-        tW += g.w; tL += g.l;
-        if(g.w > g.l) setsW++; else setsL++;
-    });
-    const winObjs = players.filter(p => winners.some(id => id == p.id));
-    const lossObjs = players.filter(p => losers.some(id => id == p.id));
-
-    const peakKey = activeMode === 'singles' ? 'peakS' : 'peakD';
-    let oldPeaks = {};
-    [...winObjs, ...lossObjs].forEach(p => { oldPeaks[p.id] = p[peakKey] || 1000; });
-
-    const avgW = winObjs.reduce((a, b) => a + (b[activeMode] || 1000), 0) / winObjs.length;
-    const avgL = lossObjs.reduce((a, b) => a + (b[activeMode] || 1000), 0) / lossObjs.length;
-
-    const baseGain = 15 * (Math.pow((tW - tL + 24), 0.7) / (7.5 + (0.01 * (avgW - avgL))));
-    
-    let impactMap = {}; 
-
-    winObjs.forEach(p => {
-        let ratio = activeMode === 'doubles' ? (p[activeMode] / (avgW * winObjs.length)) * 2 : 1;
-        let pts = Math.round((baseGain * Math.min(1.25, Math.max(0.75, ratio))) * 10) / 10;
-        p[activeMode] = Math.round((p[activeMode] + pts) * 10) / 10;
-        if (p[activeMode] > (p[peakKey] || 0)) p[peakKey] = p[activeMode];
-        impactMap[p.id] = pts;
-    });
-
-    lossObjs.forEach(p => {
-        let ratio = activeMode === 'doubles' ? (p[activeMode] / (avgL * lossObjs.length)) * 2 : 1;
-        let pts = Math.round((baseGain * Math.min(1.25, Math.max(0.75, ratio))) * 10) / 10;
-        p[activeMode] = Math.round((p[activeMode] - pts) * 10) / 10;
-        impactMap[p.id] = -pts;
-    });
-
-    history.unshift({ 
-        id: Date.now(), 
-        mode: activeMode, 
-        winners, losers,  
-        score: `${setsW}-${setsL}`, 
-        detailedGames: matchGames,      
-        impacts: impactMap,
-        oldPeaks: oldPeaks
-    });
+	    save(); 
+	    alert("Match Approved and ELO Updated!");
+	}
 
   calculateAndAddMatch(m.mode, m.winners, m.losers, m.games);
 
