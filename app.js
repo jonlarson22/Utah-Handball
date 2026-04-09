@@ -139,23 +139,19 @@ function showToast(message, isError = false) {
 
 function addPlayer() {
     const n = document.getElementById('addN').value.trim();
+    const isMem = document.getElementById('addMember').checked;
     if(n) { 
         players.push({
-            id: Date.now(), 
-            name: n, 
-            singles: 1000, 
-            doubles: 1000, 
-            baseS: 1000,
-            baseD: 1000,
-            peakS: 1000,
-            peakD: 1000,
-            active: true
+            id: Date.now(), name: n, singles: 1000, doubles: 1000, 
+            baseS: 1000, baseD: 1000, peakS: 1000, peakD: 1000, 
+            active: true, isMember: isMem
         }); 
         save(); 
         document.getElementById('addN').value = ''; 
         filterTable(); 
     }
 }
+
 function loadEditData() {
     const p = players.find(x => x.id == document.getElementById('editList').value);
     if(p) { 
@@ -171,24 +167,19 @@ function loadEditData() {
     
     if(p && newName) { 
         p.name = newName; 
+        p.isMember = document.getElementById('editMember').checked;
         
         const inputS = parseFloat(document.getElementById('editS').value);
         const inputD = parseFloat(document.getElementById('editD').value);
 
         if(!isNaN(inputS) && inputS !== p.singles) {
-            p.singles = inputS;
-            p.baseS = inputS; 
-            p.peakS = inputS;
+            p.singles = inputS; p.baseS = inputS; p.peakS = inputS;
         }
-
         if(!isNaN(inputD) && inputD !== p.doubles) {
-            p.doubles = inputD;
-            p.baseD = inputD; 
-            p.peakD = inputD;
+            p.doubles = inputD; p.baseD = inputD; p.peakD = inputD;
         }
-
         save(); 
-        showToast("Player updated! (Baselines only changed if ratings were modified)"); 
+        showToast("Player updated!"); 
     }
 }
 
@@ -356,19 +347,16 @@ function approveMatch(index) {
     const winners = m.winners.map(resolvePlayerId).filter(id => id !== 0);
     const losers = m.losers.map(resolvePlayerId).filter(id => id !== 0);
     const gamesToProcess = m.games || m.detailedGames || [];
-
     const historyCountBefore = history.length;
 
     calculateAndAddMatch(m.mode || 'singles', winners, losers, gamesToProcess);
 
     if (history.length > historyCountBefore) {
-        console.log("Success! Match moved to history.");
-        pending.splice(index, 1);
-        save(); 
+        db.ref(`pending/${m.firebaseKey}`).remove();
+        save();
         showToast("Match Approved!");
     } else {
-        console.error("ELO Engine Failed: Check if player IDs exist.");
-        alert("Error: Match could not be processed. Could not match tournament player names to ELO database IDs.");
+        alert("Error: Match could not be processed.");
     }
 }
 
@@ -405,20 +393,13 @@ function reviewSub(index) {
         });
     }
 
-    if (m.firebaseKey) {
+   if (m.firebaseKey) {
         db.ref(`pending/${m.firebaseKey}`).remove()
-            .then(() => console.log("Match moved from Queue to Editor."))
-            .catch(err => console.error("Error removing match from queue:", err));
+            .then(() => console.log("Match moved to Editor."))
+            .catch(err => console.error("Error removing match:", err));
     }
-
-    pending.splice(index, 1);
-    save();
-
-    window.scrollTo({ 
-        top: document.querySelector('.match-card').offsetTop - 100, 
-        behavior: 'smooth' 
-    });
     
+    window.scrollTo({ top: 0, behavior: 'smooth' });
     showToast("Match loaded. Review then click 'SUBMIT SCORE' to finalize.");
 }
 
@@ -429,17 +410,9 @@ function rejectSub(index) {
     if (confirm("Permanently delete this submission?")) {
         if (m.firebaseKey) {
             db.ref(`pending/${m.firebaseKey}`).remove()
-                .then(() => {
-                    console.log("Match rejected and removed from Firebase.");
-                })
-                .catch((error) => {
-                    console.error("Firebase rejection failed:", error);
-                });
+                .then(() => console.log("Match rejected."))
+                .catch((error) => console.error("Rejection failed:", error));
         }
-
-        pending.splice(index, 1);
-        save();
-        renderQueue();
     }
 }
 	
@@ -609,21 +582,12 @@ function recalculateSingleMatch(m) {
 	function save() {
     localStorage.setItem('hbFullP', JSON.stringify(players));
     localStorage.setItem('hbFullH', JSON.stringify(history));
-    localStorage.setItem('hbFullPending', JSON.stringify(pending));
 
     if (isAdmin) {
         console.log("Attempting Firebase Sync...");
-        const pendingObj = {};
-        pending.forEach(m => {
-            if (m.firebaseKey) {
-                pendingObj[m.firebaseKey] = m;
-            }
-        });
-
         db.ref('/').update({
             players: players,
-            history: history,
-            pending: pendingObj
+            history: history
         }).then(() => {
             console.log("Firebase Sync Success ✅");
         }).catch(err => {
@@ -635,20 +599,17 @@ function recalculateSingleMatch(m) {
 }
 
     function filterTable() {
-	console.log("Filtering table...");	
     const searchInput = document.getElementById('playerSearch');
     const body = document.getElementById('leaderboardBody');
     const controls = document.getElementById('paginationControls');
-
     if (!body || !searchInput) return;
 
     const searchTerm = searchInput.value.toLowerCase();
-
     const view = currentView; 
     const peakKey = view === 'singles' ? 'peakS' : 'peakD';
 
     const globalRanked = [...players]
-        .filter(p => !p.hidden)
+        .filter(p => !p.hidden && p.isMember !== false)
         .sort((a, b) => (b[view] || 1000) - (a[view] || 1000))
         .map((p, index) => {
             p.trueRank = index + 1;
@@ -703,13 +664,13 @@ function changeStatus(hide) {
 
 function loadPlayer() {
     const selectedID = document.getElementById('editList').value;
-
     const p = players.find(x => x.id == selectedID);
 
     if(p) {
         document.getElementById('editN').value = p.name;
         document.getElementById('editS').value = p.singles || 1000;
         document.getElementById('editD').value = p.doubles || 1000;
+        document.getElementById('editMember').checked = p.isMember !== false; 
     } else {
         document.getElementById('editN').value = "";
         document.getElementById('editS').value = "";
