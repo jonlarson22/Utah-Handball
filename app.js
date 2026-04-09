@@ -291,6 +291,22 @@ function calculateAndAddMatch(activeMode, winners, losers, games) {
     });
 }
 
+function resolvePlayerId(input) {
+    if (!isNaN(input) && Number(input) > 0) return Number(input);
+
+    if (typeof input === 'string') {
+        const found = players.find(p => p.name.toLowerCase() === input.trim().toLowerCase());
+        return found ? found.id : 0;
+    }
+ 
+    if (typeof input === 'object' && input !== null && input.name) {
+        const found = players.find(p => p.name.toLowerCase() === input.name.trim().toLowerCase());
+        return found ? found.id : 0;
+    }
+    
+    return 0;
+}
+
 function renderQueue() {
     const queueEl = document.getElementById('adminQueue');
     if (!queueEl) return;
@@ -303,21 +319,29 @@ function renderQueue() {
     let html = `<h2 style="color: #f1c40f; border-bottom: 1px solid #f1c40f; padding-bottom: 10px;">⚠️ Pending Approvals (${pending.length})</h2>`;
     
     pending.forEach((m, index) => {
-        const wNames = m.winners.map(id => players.find(p => p.id == id)?.name || "??").join('/');
-        const lNames = m.losers.map(id => players.find(p => p.id == id)?.name || "??").join('/');
-        const scoreStr = m.games.map(g => `${g.w}-${g.l}`).join(', ');
+        const wNames = (m.winners || []).map(w => {
+            const id = resolvePlayerId(w);
+            return players.find(p => p.id == id)?.name || "??";
+        }).join('/');
+        
+        const lNames = (m.losers || []).map(l => {
+            const id = resolvePlayerId(l);
+            return players.find(p => p.id == id)?.name || "??";
+        }).join('/');
+
+        const gamesList = m.games || m.detailedGames || [];
+        const scoreStr = gamesList.map(g => `${g.w}-${g.l}`).join(', ');
+        const displayMode = (m.mode || 'singles').toUpperCase();
         
         html += `
     <div style="background: #1a1a1a; border-left: 5px solid #f1c40f; padding: 15px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; border-radius: 4px;">
         <div>
             <div style="font-size: 14px; font-weight: bold;">${wNames} <span style="color:#888; font-weight:normal;">def.</span> ${lNames}</div>
-            <div style="font-size: 12px; color: #f1c40f; margin-top: 4px;">Scores: ${scoreStr} | <span style="color:#666">${m.mode.toUpperCase()}</span></div>
+            <div style="font-size: 12px; color: #f1c40f; margin-top: 4px;">Scores: ${scoreStr} | <span style="color:#666">${displayMode}</span></div>
         </div>
         <div style="display: flex; gap: 8px;">
             <button onclick="approveMatch(${index})" style="background: #2ecc71; color: white; border: none; padding: 8px 12px; cursor: pointer; border-radius: 4px; font-weight: bold;">APPROVE</button>
-            
             <button onclick="reviewSub(${index})" style="background: #3498db; color: white; border: none; padding: 8px 12px; cursor: pointer; border-radius: 4px;">REVIEW/EDIT</button>
-            
             <button onclick="rejectSub(${index})" style="background: #e74c3c; color: white; border: none; padding: 8px 12px; cursor: pointer; border-radius: 4px;">REJECT</button>
         </div>
     </div>`;
@@ -325,27 +349,26 @@ function renderQueue() {
     queueEl.innerHTML = html;
 }
 
-	function approveMatch(index) {
+function approveMatch(index) {
     const m = pending[index];
     if (!m) return;
 
-    const winners = m.winners.map(Number);
-    const losers = m.losers.map(Number);
+    const winners = m.winners.map(resolvePlayerId).filter(id => id !== 0);
+    const losers = m.losers.map(resolvePlayerId).filter(id => id !== 0);
+    const gamesToProcess = m.games || m.detailedGames || [];
 
     const historyCountBefore = history.length;
 
-    calculateAndAddMatch(m.mode, winners, losers, m.games);
+    calculateAndAddMatch(m.mode || 'singles', winners, losers, gamesToProcess);
 
     if (history.length > historyCountBefore) {
         console.log("Success! Match moved to history.");
-
         pending.splice(index, 1);
-
         save(); 
         showToast("Match Approved!");
     } else {
         console.error("ELO Engine Failed: Check if player IDs exist.");
-        alert("Error: Match could not be processed.");
+        alert("Error: Match could not be processed. Could not match tournament player names to ELO database IDs.");
     }
 }
 
@@ -353,23 +376,27 @@ function reviewSub(index) {
     const m = pending[index];
     if (!m) return;
 
-    setMode(m.mode);
+    setMode(m.mode || 'singles');
 
     ['g1_w','g1_l','g2_w','g2_l','g3_w','g3_l'].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.value = "";
     });
 
-    document.getElementById('w1').value = m.winners[0] || "0";
-    document.getElementById('l1').value = m.losers[0] || "0";
+    const mappedWinners = (m.winners || []).map(resolvePlayerId);
+    const mappedLosers = (m.losers || []).map(resolvePlayerId);
 
-    if (m.mode === 'doubles') {
-        document.getElementById('w2').value = m.winners[1] || "0";
-        document.getElementById('l2').value = m.losers[1] || "0";
+    document.getElementById('w1').value = mappedWinners[0] || "0";
+    document.getElementById('l1').value = mappedLosers[0] || "0";
+
+    if ((m.mode || 'singles') === 'doubles') {
+        document.getElementById('w2').value = mappedWinners[1] || "0";
+        document.getElementById('l2').value = mappedLosers[1] || "0";
     }
 
-    if (m.games && Array.isArray(m.games)) {
-        m.games.forEach((g, i) => {
+    const gamesList = m.games || m.detailedGames || [];
+    if (gamesList && Array.isArray(gamesList)) {
+        gamesList.forEach((g, i) => {
             const num = i + 1;
             const wInput = document.getElementById(`g${num}_w`);
             const lInput = document.getElementById(`g${num}_l`);
@@ -394,6 +421,7 @@ function reviewSub(index) {
     
     showToast("Match loaded. Review then click 'SUBMIT SCORE' to finalize.");
 }
+
 function rejectSub(index) {
     const m = pending[index];
     if (!m) return;
