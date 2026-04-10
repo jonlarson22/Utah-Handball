@@ -352,9 +352,26 @@ function approveMatch(index) {
     calculateAndAddMatch(m.mode || 'singles', winners, losers, gamesToProcess);
 
     if (history.length > historyCountBefore) {
-        db.ref(`pending/${m.firebaseKey}`).remove();
-        save();
-        showToast("Match Approved!");
+        
+        const updates = {
+            players: players,
+            history: history
+        };
+
+        if (m.firebaseKey) {
+            updates[`pending/${m.firebaseKey}`] = null; 
+        }
+
+        db.ref('/').update(updates).then(() => {
+            showToast("Match Approved!");
+        }).catch(err => {
+            console.error("Firebase Sync Failed:", err);
+            alert("Error syncing to database.");
+        });
+
+        localStorage.setItem('hbFullP', JSON.stringify(players));
+        localStorage.setItem('hbFullH', JSON.stringify(history));
+        
     } else {
         alert("Error: Match could not be processed.");
     }
