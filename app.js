@@ -646,7 +646,7 @@ function recalculateSingleMatch(m) {
             <td style="text-align: center; padding: 10px;">#${p.trueRank}</td>
             <td style="text-align: left; font-weight: 500; padding: 10px;">${p.name}</td>
             <td style="text-align: center; font-weight: bold; padding: 10px;">${Math.round(p[view] || 1000)}</td>
-            <td style="text-align: center; color: #f39c12; padding: 10px;">${Math.round(p[peakKey] || p[view] || 1000)}</td>
+            <td style="text-align: center; color: #f1c40f; padding: 10px;">${Math.round(p[peakKey] || p[view] || 1000)}</td>
         </tr>
     `).join('');
 
